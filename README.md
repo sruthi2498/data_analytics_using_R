@@ -2,9 +2,9 @@
 
 Data analysis using R
 
-
 Each of these have 
-  -> Problem statement (.pdf form)
-  -> Data sets (.csv form)
-  -> R code (.R form)
+	
+		-> Problem statement (.pdf form)
+		-> Data sets (.csv form)
+		-> R code (.R form)
   

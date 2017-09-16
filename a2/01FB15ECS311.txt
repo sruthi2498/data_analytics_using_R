@@ -1,0 +1,328 @@
+#multiplot function used (extra)  ------------------------------------------------------------
+multiplot <- function(..., plotlist = NULL, file, cols = 1, layout = NULL) {
+  require(grid)
+  
+  plots <- c(list(...), plotlist)
+  
+  numPlots = length(plots)
+  
+  if (is.null(layout)) {
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                     ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+  
+  if (numPlots == 1) {
+    print(plots[[1]])
+    
+  } else {
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+    
+    for (i in 1:numPlots) {
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+      
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+#Q1------------------------------------------------------------------------------------------
+library(ggplot2)
+library(reshape2)
+
+mydata<- read.csv("pokemon.csv",header=TRUE,sep=",")
+mydata<-as.data.frame(mydata)
+n<-nrow(mydata)
+orig<-melt(mydata["Total"])
+original_plot<-ggplot (orig, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5) + geom_vline(xintercept=0)+geom_hline(yintercept=0)+ggtitle("Original")
+
+#Simple Random Sample which includes 70% of the dataset
+simple_random<-mydata[sample(nrow(mydata), 0.7*n), ]
+simple_random
+nrow(simple_random)
+sr<-melt(simple_random["Total"])
+simple_random_plot<-ggplot (sr, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5)  + geom_vline(xintercept=0)+geom_hline(yintercept=0)+ggtitle("Simple Random")
+
+
+#Systematic Sample with k = 3 (starting from the first element, i.e. 1st,4th,7th,...etc)
+systematic_sample<-data.frame()
+for(i in 1:nrow(mydata)){
+  row<-mydata[i,]
+  if((i-1)%%3==0){
+    systematic_sample<-rbind(systematic_sample,row)
+  }
+  
+}
+print(systematic_sample)
+sys<-melt(systematic_sample["Total"])
+sys_plot<-ggplot (sys, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5)  + geom_vline(xintercept=0)+geom_hline(yintercept=0)+ggtitle("Systematic")
+#Stratified Random Sample where the strata are ‘male’ and ‘female’
+male<-subset(mydata,mydata$Pr_Male>=0.5)
+female<-subset(mydata,mydata$Pr_Male<0.5)
+#choosing 50% of data from male and 50% from femaleusing simple random sampling
+n<-nrow(male)
+m<-nrow(female)
+male_sample<-mydata[sample(nrow(male), 0.5*n), ]
+male_sample
+female_sample<-mydata[sample(nrow(female), 0.5*m), ]
+female_sample
+#binding both
+stratified_sample<-rbind(female_sample,male_sample)
+print(stratified_sample)
+strat<-melt(stratified_sample["Total"])
+strat_plot<-ggplot (strat, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5)  + geom_vline(xintercept=0)+geom_hline(yintercept=0)+ggtitle("Stratified")
+
+
+#Clustered Sample based on primary type(choose 70% of the types)
+all_types<-as.vector(unique(mydata["Type_1"]))
+n<-nrow(all_types)
+#70% of types
+sample_types<-sample(n, 0.7*n)
+sample_types
+nrow(sample_types)
+clustered_sample<-data.frame()
+for(t in sample_types){
+  type<-all_types[t,]
+  type<-toString(type)
+  #subset of data for each of the sample types
+  data<-subset(mydata,mydata$Type_1==type)
+  clustered_sample<-rbind(clustered_sample,data)
+}
+print(clustered_sample)
+cl<-melt(clustered_sample["Total"])
+clust_plot<-ggplot (cl, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5)  + geom_vline(xintercept=0)+geom_hline(yintercept=0)+ggtitle("Clustered")
+
+#Multiplot to see difference in variation of column Total
+multiplot(original_plot,simple_random_plot,sys_plot,strat_plot,clust_plot,cols=3)
+
+
+#Q2------------------------------------------------------------------------------------------
+mydata<- read.csv("pokemon.csv",header=TRUE,sep=",")
+mydata<-as.data.frame(mydata)
+
+#Calculate the distance between means of Pokémons of primary type, Grass and fire
+#columns to be considered are : HP, Attack,defence,Sp_Atk,Sp_Def, speed
+grass=subset(mydata,mydata$Type_1=="Grass")
+grass<-grass[c("HP",	"Attack","Defense","Sp_Atk","Sp_Def","Speed")]
+fire=subset(mydata,mydata$Type_1=="Fire")
+fire<-fire[c("HP",	"Attack","Defense","Sp_Atk","Sp_Def","Speed")]
+
+#Normalizing data to range between 0 and 1
+NormalizeData0to1<-function(colname){
+  max_val<-max(colname)
+  min_val<-min(colname)
+  normalized<-data.frame()
+  for(i in 1:nrow(colname)){
+    y<-colname[i,]
+    z=(y - min_val)/(max_val-min_val)
+    normalized<-rbind(normalized,z)
+  }
+  return(normalized)
+}
+
+#Creating a normalized data set
+grass_normalized<-data.frame(matrix(nrow = nrow(grass)))
+for(i in 1:ncol(grass)){
+  current_col<-grass[i]
+  normalized_col<-NormalizeData0to1(current_col)
+  grass_normalized<-cbind(grass_normalized,normalized_col)
+}
+grass_normalized<-grass_normalized[,-1]
+names(grass_normalized)<-names(grass)
+grass_normalized
+
+fire_normalized<-data.frame(matrix(nrow = nrow(fire)))
+for(i in 1:ncol(fire)){
+  current_col<-fire[i]
+  normalized_col<-NormalizeData0to1(current_col)
+  fire_normalized<-cbind(fire_normalized,normalized_col)
+}
+fire_normalized<-fire_normalized[,-1]
+names(fire_normalized)<-names(fire)
+fire_normalized
+
+#CALCULATING DIFFERENCES
+g1mean<-mean(grass_normalized$HP)
+f1mean<-mean(fire_normalized$HP)
+HP_mean_diff<-g1mean-f1mean
+
+g2mean<-mean(grass_normalized$Attack)
+f2mean<-mean(fire_normalized$Attack)
+Attack_mean_diff<-g2mean-f2mean
+
+g3mean<-mean(grass_normalized$Defense)
+f3mean<-mean(fire_normalized$Defense)
+Def_mean_diff<-g3mean-f3mean
+
+g4mean<-mean(grass_normalized$Sp_Atk)
+f4mean<-mean(fire_normalized$Sp_Atk)
+Spa_mean_diff<-g4mean-f4mean
+
+g5mean<-mean(grass_normalized$Sp_Def)
+f5mean<-mean(fire_normalized$Sp_Def)
+Spd_mean_diff<-g5mean-f5mean
+
+g6mean<-mean(grass_normalized$Speed)
+f6mean<-mean(fire_normalized$Speed)
+Speed_mean_diff<-g6mean-f6mean
+
+print("mean differences")
+print(names(grass_normalized))
+print(c(HP_mean_diff,Attack_mean_diff,Def_mean_diff,Spa_mean_diff,Spd_mean_diff,Speed_mean_diff))
+
+result<-data.frame(NA,NA)
+names(result)<-c("Grass means","Fire means")
+gm<-c(g1mean,g2mean,g3mean,g4mean,g5mean,g6mean)
+fm<-c(f1mean,f2mean,f3mean,f4mean,f5mean,f6mean)
+allnames<-names(grass_normalized)
+result<-data.frame(allnames,gm,fm)
+result
+
+library(ggplot2)
+#Line graph of their means
+ggplot(data=result, aes(x=allnames, y=gm, group=1)) +  geom_line() +xlab("Factor") + ylab("Mean Values") + ggtitle("Grass Type")
+ggplot(data=result, aes(x=allnames, y=fm, group=1)) +  geom_line() +xlab("Factor") + ylab("Mean Values") + ggtitle("Fire Type")
+
+
+#Kurtosis and skew of heights of pokemons
+all_pokemon_weights<-mydata$Weight_kg
+all_pokemon_weights
+all_pokemon_heights<-mydata$Height_m
+all_pokemon_heights
+
+library(moments)
+weight_skew<-skewness(all_pokemon_weights)
+height_skew<-skewness(all_pokemon_heights)
+weight_kurtosis<-kurtosis(all_pokemon_weights)
+height_kurtosis<-kurtosis(all_pokemon_heights)
+print("Skew : Weight and Height")
+print(c(weight_skew,height_skew))
+print("Kurtosis : Weight and Height")
+print(c(weight_kurtosis,height_kurtosis))
+
+
+#Normalize dataset with mean 0 and standard deviation 1
+NormalizeData_Mean0SD1<-function(colname){
+  colmean<-sapply(colname,mean)
+  colsd<-sapply(colname,sd)
+  normalized<-data.frame()
+  for(i in 1:nrow(colname)){
+    y<-colname[i,]
+    z=(y - colmean)/colsd
+    #Z score is (value-mean)/sd
+    normalized<-rbind(normalized,z)
+  }
+  return(normalized)
+}
+
+required_columns<-mydata[c("HP","Attack", "Defense","Sp_Atk","Sp_Def","Speed","Total","Height_m","Weight_kg")]
+#Normalizing every column
+normalized_columns<-data.frame(matrix(nrow=nrow(mydata)))
+for(i in 1:ncol(required_columns)){
+  current_col<-required_columns[i]
+  #For each column, normalize the data
+  normalized_col<-NormalizeData_Mean0SD1(current_col)
+  normalized_columns<-cbind(normalized_columns,normalized_col)
+}
+normalized_columns<-normalized_columns[,-1]
+normalized_columns
+names(normalized_columns)<-names(required_columns)
+library(reshape2)
+df1<-melt(normalized_columns["HP"])
+p1<-ggplot (df1, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5) + xlim(-5,7)+ geom_vline(xintercept=0)+geom_hline(yintercept=0)
+df2<-melt(normalized_columns["Attack"])
+p2<-ggplot (df2, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5) + xlim(-5,7)+ geom_vline(xintercept=0)+geom_hline(yintercept=0)
+df3<-melt(normalized_columns["Defense"])
+p3<-ggplot (df3, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5) + xlim(-5,7)+ geom_vline(xintercept=0)+geom_hline(yintercept=0)
+
+df4<-melt(normalized_columns["Sp_Atk"])
+p4<-ggplot (df4, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5) + xlim(-5,7)+ geom_vline(xintercept=0)+geom_hline(yintercept=0)
+df5<-melt(normalized_columns["Sp_Def"])
+p5<-ggplot (df5, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5) + xlim(-5,7)+ geom_vline(xintercept=0)+geom_hline(yintercept=0)
+df6<-melt(normalized_columns["Speed"])
+p6<-ggplot (df6, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5) + xlim(-5,7)+ geom_vline(xintercept=0)+geom_hline(yintercept=0)
+
+df7<-melt(normalized_columns["Total"])
+p7<-ggplot (df7, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5) + xlim(-5,7)+ geom_vline(xintercept=0)+geom_hline(yintercept=0)
+df8<-melt(normalized_columns["Height_m"])
+p8<-ggplot (df8, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5) + xlim(-5,7)+ geom_vline(xintercept=0)+geom_hline(yintercept=0)
+df9<-melt(normalized_columns["Weight_kg"])
+p9<-ggplot (df9, mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5) + xlim(-5,7)+ geom_vline(xintercept=0)+geom_hline(yintercept=0)
+
+multiplot(p1,p2,p3,p4,p5,p6,p7,p8,p9,cols=3)
+
+ggplot (melt(normalized_columns), mapping = aes (color = variable, x = value)) + geom_density (alpha = 0.5) + xlim(-5,7)+ geom_vline(xintercept=0)+geom_hline(yintercept=0)
+
+
+
+#Q3------------------------------------------------------------------------------------------
+
+mydata<- read.csv("pokemon.csv",header=TRUE,sep=",")
+mydata<-as.data.frame(mydata)
+#You perform preliminary analysis on the dataset and decide to drop 2variables from consideration for the PCA procedure.
+#Which 2 variables aremost appropriate to bedropped? Give supporting reasons.
+library("FactoMineR")
+#required columns
+mydata<-mydata[,c(5,6,7,8,9,10,11,12,16,20,21,22)]
+names(mydata)
+mydata<-mydata[order(mydata$Total, decreasing= T),]
+#correlation matrix
+cor.mat <- round(cor(mydata,use="pairwise", method="spearman"),2)
+subset(melt(cor.mat), value > .5) #Highest correlation observed between height and weight. Thus removing them
+mydata$Height_m<-NULL
+mydata$Weight_kg<-NULL
+names(mydata)
+#view correlation matrix
+library("corrplot")
+corrplot(cor.mat, type="upper", order="hclust",tl.col="black", tl.srt=45)
+
+#PCA
+library("FactoMineR")
+mydata_pca <- PCA(mydata, scale.unit = TRUE, graph = FALSE)  
+mydata_pca
+
+# Eigenvalues <=> amount of the variation explained by each principal component (PC).
+eigenvalues <- mydata_pca$eig
+print(eigenvalues)
+eigen_sum<-sum(eigenvalues$eigenvalue)
+for(i in 1:nrow(eigenvalues)){
+  row<-eigenvalues[i,]
+  x<-row$eigenvalue/eigen_sum
+  print( c(i,row$eigenvalue,x) )
+}
+# If PC has eigenvalue > 1 then this PC accounts for more variance than accounted by one of the original variables in standardized data. 
+# Using this as a cutoff point to determine the number of PCs to retain.
+
+#Plot of variance assoiciated with each variable :
+barplot(eigenvalues[, 2], names.arg=1:nrow(eigenvalues),  main = "Variances", xlab = "Principal Components",ylab = "Percentage of variances", col ="purple")
+lines(x = 1:nrow(eigenvalues), eigenvalues[, 2],  type="b", pch=19, col = "black")
+
+#Data to be stored in the new device will be the data related to the first 2 components
+
+contribution<-as.data.frame(mydata_pca$var$contrib)
+names(contribution)
+#Finding the variable with maximum in Dimension 1
+var1<-row.names(subset(contribution,contribution$Dim.1==max(contribution$Dim.1)))
+print(var1)
+#Finding the variable with maximum in Dimension 2
+var2<-row.names(subset(contribution,contribution$Dim.2==max(contribution$Dim.2)))
+print(var2)
+#Data to be stored has to be only from these two columns
+result_data<-subset(mydata,select=c(var1,var2))
+print(result_data)
+
+
+#Plot scatterplot based on first 2 principal components
+mydata_pca <- PCA(mydata, scale.unit = TRUE, graph = FALSE)  
+mydata_pca
+#"$ind$coord"       "coord. for the individuals" 
+PC1<-mydata_pca$ind$coord[,1]
+PC2<-mydata_pca$ind$coord[,2]
+PCs<-data.frame(cbind(PC1,PC2))
+
+ggplot(PCs,aes(x=PC1,y=PC2)) + geom_point(colour="grey",size=2) +geom_point(data=PCs[1:10, ], aes(x=PC1, y=PC2), colour="black", size=2) + xlab("PC 1" )+ ylab("PC 2") + ggtitle("Scatterplot of first 2 pc")
+
+
+
+
+

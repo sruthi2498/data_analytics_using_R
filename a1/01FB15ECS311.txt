@@ -1,0 +1,284 @@
+#Question 1 ---------------------------------------------------------------------------------------------------------
+mydata<- read.csv("deliveries.csv",header=TRUE,sep=",")
+mydata<-as.data.frame(mydata)
+
+#What was the target set by the team? 
+#all matches with match id 577
+allmatchid577<-subset(mydata,mydata$match_id==577)
+#inning 1 : batting team target
+inning1<-subset(allmatchid577,allmatchid577$inning==1)
+target<-sum(inning1$total_runs)
+print(c("target set",target))
+
+#What was the run rate (number of runs per over) required by Royal Challengersto ensure that they at least drew the match with their opponent? 
+#sum of total runs column will give target set by batting team
+#number of overs=20
+# therefore run rate =target/overs
+runrate<-target/20
+print(c("Runrate required ",runrate))
+
+#Plot a bar chart indicating the number of runs scored by Royal Challengers Bangalore in each over
+#inning 2 : RCB
+library(ggplot2)
+#subset of inning2
+inning2<-subset(allmatchid577,allmatchid577$inning==2)
+#all overs
+overs<-unique(inning2$over)
+bar_chart<-data.frame(NA,NA)
+names(bar_chart)<-c("over","runs")
+
+for(o in overs){
+  #subset of data for current over
+  current_over<-subset(inning2,inning2$over==o)
+  totalruns<-sum(current_over$total_runs)
+  newrow<-data.frame(o,totalruns)
+  names(newrow)<-c("over","runs")
+  bar_chart<-rbind(bar_chart,newrow)
+  
+}
+orig_names<-names(bar_chart)
+names(bar_chart)
+bar_chart<-data.frame(bar_chart[-1,])
+names(bar_chart)
+names(bar_chart)<-orig_names
+#bar_chart has the data of number of runs scored in every over
+p<-ggplot(bar_chart,aes(bar_chart$over,bar_chart$runs))+geom_bar(stat = "identity",fill="purple",color="black") + ggtitle("Number of runs per over") + xlab("Overs") +ylab("Runs")
+p
+
+
+#Question 2 ---------------------------------------------------------------------------------------------------------
+mydata<- read.csv("deliveries.csv",header=TRUE,sep=",")
+mydata<-as.data.frame(mydata)
+
+# compute  the  total  number  of  runs  scored  by  each  team  in  their  respective innings
+result<-data.frame(NA,NA,NA,NA)
+names(result)<-c("match_id","inning","batting_team","total_runs")
+
+#Get a list of all match ids
+allmatchid= unique(mydata$match_id)
+
+mydataMatches<- read.csv("matches.csv",header=TRUE,sep=",")
+mydataMatches<-as.data.frame(mydataMatches)
+#All matches where dl_applied is 1
+dl_appliedmatches=subset(mydataMatches,mydataMatches$dl_applied==1)
+dl_appliedmatchids=unique(dl_appliedmatches$id)
+
+#All matches where there is no result
+noresultmatches<-subset(mydataMatches,mydataMatches$result=="no result")
+noresultmatchids<-unique(noresultmatches$id)
+
+for(matchid in allmatchid){
+  #if the match_id does not belong to DL
+  if(((matchid %in% dl_appliedmatchids)==FALSE) && ((matchid %in% noresultmatchids)==FALSE)){
+    #Subset for this particular match
+    current_match<-subset(mydata,mydata$match_id==matchid)
+    #For each match get a list of innings
+    allinnings= unique(current_match$inning)
+    for(inn in allinnings){
+      
+      #Subset for this particular inning 
+       each_inning=subset(current_match,current_match$inning==inn)
+       #Total of column total_runs
+       total<-sum(each_inning$total_runs)
+       #slice first row to find batting team name
+       x<-each_inning[1,]
+       team=x$batting_team
+       team<-toString(team)
+       #Create new row with these values
+       newrow<-data.frame(matchid,inn,team,total)
+       names(newrow)<-c("match_id","inning","batting_team","total_runs")
+       #append to result 
+      result<-rbind(result,newrow)
+       
+    }
+  }
+  
+}
+orig_names<-names(result)
+result<-data.frame(result[-1,])
+names(result)<-orig_names
+
+
+
+#Report your result for matches with match ID 7, 27, 67, 171 and 414.
+actual_result <- subset(result, result$match_id==7 |result$match_id==27 |result$match_id==67|result$match_id==171|result$match_id==414)
+actual_result<-unique(actual_result)
+print(actual_result)
+
+
+
+#Report  the team  that  scored  the  least  number  of  runs and  the team  thatscored  the maximum  number  of  runs  in  any  match  throughout  the  tournament along  with  their  scores.
+minruns<-min(result$total_runs,na.rm = TRUE)
+minrow<-subset(result,result$total_runs==minruns)
+minrow<-unique(minrow)
+print("min")
+print(minrow)
+print(minrow[c("batting_team","total_runs")])
+
+maxruns<-max(result$total_runs,na.rm = TRUE)
+maxrow<-subset(result,result$total_runs==maxruns)
+maxrow<-unique(maxrow)
+print("max")
+print(maxrow[c("batting_team","total_runs")])
+
+
+#Question 3 ---------------------------------------------------------------------------------------------------------
+mydata<- read.csv("deliveries.csv",header=TRUE,sep=",")
+mydata<-as.data.frame(mydata)
+
+#PLAYERS: AB  de  Villiers ,  MS Dhoni,  RA  Jadeja,  SK  Raina  and V  Kohli
+players<-c( "AB de Villiers", "MS Dhoni","RA Jadeja",  "SK Raina", "V Kohli")
+
+#total runs scored, mean, median, mode, 1stquartile, 3rdquartile,IQR and standard  deviation  of runs 
+result<-data.frame(NA,NA,NA,NA,NA,NA,NA,NA,NA)
+names(result)<-c("batsman","total_runs", "mean", "median", "mode", "Q1","Q3","IQR","stddev" )
+
+total_runs_scored<-function(data1){
+  x<-sum(data1$total_runs)
+  return(x)
+}
+
+for(player in players){
+  #subset of player
+  dataset<-subset(mydata,mydata$batsman==player)
+  #calculate total using user defined function
+  total<-total_runs_scored(dataset)
+  #Summary of dataset gives mean,median,quartiles,etc
+  summ<-summary(dataset$total_runs)
+  q1<-summ[2]
+  med<-summ[3]
+  mean1<-summ[4]
+  q3<-summ[5]
+  iqr<-q3-q1
+  stddev<-sd(dataset$total_runs)
+  temp <- table(as.vector(dataset$total_runs))
+  mode1<-names(temp)[temp == max(temp)]
+  newrow<-data.frame(player,total,mean1,med,mode1,q1,q3,iqr,stddev)
+  names(newrow)<-c("batsman","total_runs", "mean", "median", "mode", "Q1","Q3","IQR","stddev" )
+  result<-rbind(result,newrow)
+  
+  
+}
+orig_names<-names(result)
+result<-data.frame(result[-1,])
+names(result)<-orig_names
+print(result)
+
+#Question 4 ---------------------------------------------------------------------------------------------------------
+mydata<- read.csv("deliveries.csv",header=TRUE,sep=",")
+mydata<-as.data.frame(mydata)
+#Draw the boxplot of the total number  of  runs  scored  by  them  in  each  match
+players<-c("V Kohli","MS Dhoni")
+player1<-subset(mydata,mydata$batsman==players[1])
+player2<-subset(mydata,mydata$batsman==players[2])
+
+#Function to find out total runs scored by a batsman in each match he has played
+info<-function(dataset){
+  result<-data.frame(NA)
+  names(result)<-c("total_runs")
+  #required columns are match id and total runs
+  allmatches<-unique(dataset$match_id)
+  for(matchid in allmatches){
+    #for every match subset of current match
+    current_match<-subset(dataset,dataset$match_id==matchid)
+    #total runs in this match
+    totalruns<-sum(current_match$total_runs)
+    #append to result 
+    newrow<-data.frame(totalruns)
+    names(newrow)<-c("total_runs")
+    result<-rbind(result,newrow)
+    
+  }
+  return(result)
+  
+}
+
+result1<-info(player1)
+orig_names<-names(result1)
+result1<-data.frame(result1[-1,])
+names(result1)<-orig_names
+#90th percentile calculation
+perc1<-quantile(result1$total_runs, c(.90))
+names(result1)<-c("V Kohli")
+
+result2<-info(player2)
+orig_names<-names(result2)
+result2<-data.frame(result2[-1,])
+names(result2)<-orig_names
+#90th percentile calculation
+perc2<-quantile(result2$total_runs, c(.90))
+names(result2)<-c("MS Dhoni")
+
+library(ggplot2)
+require(reshape2)
+#Boxplots :
+p1<-ggplot(melt(result1), aes(variable, value)) + geom_boxplot(color="black",fill="red")+ ggtitle("V Kohli")
+print(p1)
+p2<-ggplot(melt(result2), aes(variable, value)) + geom_boxplot(color="black",fill="blue")+ ggtitle("MS Dhoni")
+print(p2)
+
+print("90th percentile :")
+print(c(perc1,perc2))
+
+#Question 5 ---------------------------------------------------------------------------------------------------------
+mydata<- read.csv("deliveries.csv",header=TRUE,sep=",")
+mydata<-as.data.frame(mydata)
+
+#‘Suresh  Raina is a key player of Gujarat Lions and  his performance in every match is directly reflected in the total score of the team’ 
+
+mydataMatches<- read.csv("matches.csv",header=TRUE,sep=",")
+mydataMatches<-as.data.frame(mydataMatches)
+
+#Function to return matchid and runs scored in that match
+total_runs_scored<-function(dataset){
+  result<-data.frame(NA,NA)
+  names(result)<-c("match_id","total_runs")
+  
+  allmatchids<-unique(dataset$match_id)
+  for(matchid in allmatchids){
+    current_match<-subset(dataset,dataset$match_id==matchid)
+    totalruns<-sum(current_match$total_runs)
+    newrow<-data.frame(matchid,totalruns)
+    names(newrow)<-c("match_id","total_runs")
+    result<-rbind(result,newrow)
+  }
+  result<-data.frame(result[-1,])
+  return(result)
+}
+
+#Total runs scored data of Gujarat Lions
+GL<-subset(mydata,mydata$batting_team=="Gujarat Lions")
+GL_dataset<-total_runs_scored(GL)
+
+#All matches of Gujarat Lions that they won
+GL_win<-subset(mydataMatches,mydataMatches$winner=="Gujarat Lions")
+GL_win_match_ids<-unique(GL_win$id)
+
+#Removing matches that they did not win
+result<-data.frame(NA,NA)
+names(result)<-c("match_id","total_runs")
+for(matchid in GL_win_match_ids) {
+  newrow<-subset(GL_dataset,GL_dataset$match_id==matchid)
+  result<-rbind(result,newrow)
+}
+result<-data.frame(result[-1,])
+GL_dataset<-result
+
+#Total runs scored data of Suresh Raina in Gujarat Lions
+SR<-subset(GL,GL$batsman=="SK Raina")
+SR_dataset<-total_runs_scored(SR)
+
+#Removing matches that they did not win
+result<-data.frame(NA,NA)
+names(result)<-c("match_id","total_runs")
+for(matchid in GL_win_match_ids) {
+  newrow<-subset(SR_dataset,SR_dataset$match_id==matchid)
+  result<-rbind(result,newrow)
+}
+result<-data.frame(result[-1,])
+SR_dataset<-result
+
+#Merging both datasets on match id
+result<-merge(GL_dataset,SR_dataset,by="match_id")
+result<-result[order(-result$total_runs.y),]
+result
